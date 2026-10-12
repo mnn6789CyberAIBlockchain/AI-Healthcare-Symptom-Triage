@@ -84,12 +84,34 @@ def preprocess_text(text: str) -> dict:
 
 
 
+
 def extract_symptoms(text: str) -> list:
-    """Find symptom phrases while filtering simple nearby negations."""
+    """
+    Match known symptom phrases and filter simple nearby negations.
+
+    This is a basic keyword heuristic, not medical language understanding.
+    It may misinterpret contractions, sentence structure, and context.
+    """
+    if not isinstance(text, str):
+        raise TypeError("Input must be a string.")
 
     normalized_text = re.sub(
         r"\s+", " ", re.sub(r"[^a-z\s'-]", " ", text.lower())
     ).strip()
+
+    # Normalize common negation contractions before matching.
+    normalized_text = re.sub(r"\bdon't\b", "do not", normalized_text)
+    normalized_text = re.sub(r"\bdoesn't\b", "does not", normalized_text)
+    normalized_text = re.sub(r"\bdidn't\b", "did not", normalized_text)
+    normalized_text = re.sub(r"\bcan't\b", "cannot", normalized_text)
+    normalized_text = re.sub(r"\bcannot\b", "not", normalized_text)
+    normalized_text = re.sub(r"\bwon't\b", "will not", normalized_text)
+    normalized_text = re.sub(r"\bisn't\b", "is not", normalized_text)
+    normalized_text = re.sub(r"\baren't\b", "are not", normalized_text)
+    normalized_text = re.sub(r"\bwasn't\b", "was not", normalized_text)
+    normalized_text = re.sub(r"\bweren't\b", "were not", normalized_text)
+    normalized_text = re.sub(r"\bhaven't\b", "have not", normalized_text)
+    normalized_text = re.sub(r"\bhasn't\b", "has not", normalized_text)
 
     found_symptoms = []
 
@@ -98,11 +120,10 @@ def extract_symptoms(text: str) -> list:
             pattern = r"(?<![a-z])" + re.escape(phrase) + r"(?![a-z])"
 
             for match in re.finditer(pattern, normalized_text):
-                # Examine the few words immediately before the phrase.
-                preceding_text = normalized_text[:match.start()]
-                preceding_words = preceding_text.split()[-3:]
+                # Check the three words immediately before the match.
+                preceding_words = normalized_text[:match.start()].split()[-3:]
 
-                # Ignore a match if a simple negation appears nearby.
+                # Skip this match when a simple negation appears nearby.
                 if any(word in NEGATION_WORDS for word in preceding_words):
                     continue
 
